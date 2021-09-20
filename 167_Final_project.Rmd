@@ -1,0 +1,1241 @@
+---
+title: "STAT 167 Project - Team S.T.A.T."
+subtitle: "Data Analysis of: Suicide Rates from 1985 to 2016 by Country"
+author: "Alan Phan, Brian Tran, Dalia Avila, Jiayin Sun, and Eric Wu"
+date: "May 27, 2019"
+output: html_document
+---
+
+
+## **Abstract** 
+
+Suicide is one of the leading causes of death worldwide. According to the World Health Organization, around 800,000 people commit suicide every year, which is one person every 40 seconds (https://www.who.int/mental_health/prevention/suicide/suicideprevent/en/). /*how to cite this source?*/ 
+
+A recent report from The American Foundation for Suicide Prevention stated that suicide is the 10th leading cause of death in the United States alone (https://afsp.org/about-suicide/suicide-statistics/) /* how to cite this source */. Despite these alarming statistics, the epidemiology of such behavior is generally limited within the academic sphere. Although lacking in academic discussions, the study of suicide plays an important component in addressing policymakers on the need for suicide prevention and mental health advocacy. New research and results can help improve contemporary comprehensions of suicide within scientific literature and aid in efforts to decrease the significant loss of life by self-immolation. 
+We hope to contribute to this advancement surrounding suicide awareness by investigating possible factors that could influence one's decision to end their lives. In particular, we will analyze suicide rates for multiple countries worldwide and demographic factors such as gender, socio-economic status, age and generation. Other factors, such as the year the data was collected, the country's gross domestic product per year, the country's gross domestic product per capita and country's population are also considered. We hope to draw conclusions on potential factors that attribute to higher suicide rates and provide clarity within the academic-policy domain on prospective mental health reform and suicide intervention. 
+
+
+
+## **Data** 
+
+
+Our analysis will come from an open-source data set, called "Suicide Rates Overview 1985 to 2016". The data set consists of twelve variables: country, year, sex, age group, count of suicides, population, suicide rate, country-year composite key, HDI for year, gdp_for_year, gdp_per_capita and generation (based on age grouping average) for multiple countries.  (https://www.kaggle.com/russellyates88/suicide-rates-overview-1985-to-2016)
+
+Another dataset joined for analysis includes the Prosperity Index from The Legatum Institute which promotes policies that create pathways from poverty to prosperity. They describe these conditions of prosperity as the combination of nine pillars: Economic Quality, Business Environment, Governance, Personal Freedom, Social Capital, Safety and Security, Education, Health, and the Natural Environment. The Legatum Institute uses data for 149 countries over eleven years, then track the journeys made by countries towards or away from prosperity. By combining the Prosperity Index as a predictor for suicide rate analysis, it is hoped to capture some nuiances of inherent differences between the country's structure and status.
+
+## **Statistical Packages/Programming** 
+
+We will perform our anaylsis using R, an open source programming language and free software enviroment most commonly used for statistical computing and graphics. We will use statistical packages in R, such as `tidyverse`,`dipylr` and `ggplot2` for exploratory data anaylsis and visualization of the data set. 
+
+
+## **Questions to Consider** 
+
+Our data analysis will attempt to answer the following questions:
+
+1. Is gender (male/female) a significant indicator of a country's suicide rate ?
+
+2. Is the generation (G.I., Silent, Boomers, X, Millennials, Z) a person born in a significant indicator of a c country's suicide rate?
+
+3. Is a country's gross domestic product (GDP) a significant indicator of a country's suicide rate?
+
+4. Is a country's prosperity index (based on the pillars of: economic quality, business environment, governance, personal freedom, social capital, safety and security, education, health, and natural environment) a significant indicator of a country's suicide rate?
+
+5. Are interaction effects (ie is suicide rate influenced by factor combinations of gender-GDP, gender-generation, gender-population, generation-GDP,generation-prosperity index,etc. ) significant indicators of a country's suicide rates? If so, which ones?
+
+
+
+## **Model Specification**
+
+The model we will explore is multiple linear regression model using suicide rate as the response and four predictors. The predictors we will use will be the gross domestic product (GDP), generation (G.I., Silent, Boomers, X, Millennials, Z), prosperity index (based on the pillars of: economic quality, business environment, governance, personal freedom, social capital, safety and security, education, health, and natural environment) and compare between males and females.
+Multilinear Regression model:
+
+
+ $$Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_3 +\beta_4 X_4 + \epsilon \\\epsilon \sim N(0, \sigma^2)$$
+
+
+## **Purpose**
+
+The use of the data will be to determine if there is a correlation between suicide rate and factors of their respective countries such as generation, gross domestic product, and the country's prosperity index. The data will also be subset between sex in order to study the differences between males and females. 
+
+
+
+## **Procedure**
+
+Our evaluation of the dataset will join other datasets. Namely, we will join the data to another that includes the prosperity index in order to use the prosperity index as a predictor for suicide rate by country. Further, we will join the data to other datasets in order to add coordinate information and continents to the suicides dataset for mapping visualizations. 
+
+The data analysis procedure will be done by:
+
+
+ 1. Exploratory Analysis
+ 
+    - Visualization of Countries in World Map of Suicide rates by GDP.
+    - Visualization of Countries in World Map Suicide rates by Prosperity Index.
+    - Plots showing the linear relationship between predictor variables and suicide rate.
+
+
+ 2. Model fitting
+ 
+    - Simple linear regression
+    - Multilinear/Polynomial regression
+    - Logistic Regression
+    - K-Nearest Neighbor
+    - Linear Discriminant Analaysis
+ 
+ 
+ 3. Reviewing model assumptions to verify validity of model
+ 
+    - Normality 
+    - Constant variance
+
+ 
+ 4. Plotting suicide rates vs. dependent variables used
+ 
+    - QQ Plot
+    - Residuals vs. Fitted values
+ 
+ 
+ 5. Evaluating models
+ 
+    - Misclassification Error Rate
+    - Sensitivity
+    - Specificity
+
+
+**Libraries and packages going to be used in this project.**
+```{r}
+library(dplyr)
+library(funModeling)
+library(tidyverse)
+library(Hmisc)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(readxl)
+library(gapminder)
+library(boot)
+theme_set(theme_bw())
+#install.packages("sf")
+#install.packages("rnaturalearth")
+#install.packages("rnaturalearthdata")
+#install.packages("rgeos")
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos) # Error in st_as_sfc.SpatialPolygons(sp::geometry(x), ...) : package rgeos required for finding out which hole belongs to which exterior ring
+```
+      
+**Data Preparation and Loading Files**
+```{r}
+# loading data from suicide file
+suicides <- read.csv("C:/master.csv",header=TRUE)
+glimpse(suicides)  # outputting a glimpse of the data
+
+# loading data from prosperity index file
+prosperity <- read_excel("C:/PI.xlsx")
+glimpse(prosperity)  # outputting a glimpse of the data
+
+# loading data from country_coords file
+coords<-read_excel("C:/country_coord.xlsx",sheet=1)
+coords
+glimpse(coords)
+
+# take prosperity dataset and group_by rank
+prosperity.grouped <- prosperity %>% group_by(country) %>% 
+  summarise(mean.rank.PI = mean(rank_PI, na.rm = TRUE)) #Get the mean rank per country
+suicides <- suicides %>%
+  mutate(country = as.character(ï..country))
+
+# checking for mismatches in both tables 
+glimpse(suicides)
+prosperity.grouped
+#use anti_join function for mismatches in both tables 
+suicides.anti <- suicides %>%
+  anti_join(prosperity.grouped, by = c("country" = "country")) %>%
+  count(country, sort = TRUE)
+#filter prosperity by the year
+suicides.pi <- suicides %>%
+  inner_join(prosperity.grouped, by = c("country" = "country")) %>%
+  arrange(mean.rank.PI)
+glimpse(suicides.pi)
+
+# using package 'gapminder' for continent data to use for subsetting our mapping visualizations
+library(gapminder)
+continents <- gapminder %>%
+  dplyr::select(country, continent)
+
+```
+
+
+## **Exploratory analysis**
+In this section, we looked into our dataset to look for rough trends. Through plotting and graphing, we can see how some variables have changed over time. With this, we can start making inferences about some of the variables and their relationships with one another.
+#scatterplot year vs. suicides rates suit by gender
+**As we can se the highest suicides year occurs from 1990-2000 and 2012. More male than female people commited suicide.**
+```{r}
+#basic analysis
+#plot of the suicide rate of each year
+plot1<-ggplot(data = suicides.pi, mapping = aes(x = year,y = suicides.100k.pop)) +
+geom_point(aes(color=sex))+
+  ggtitle("suicides rates by year")
+plot1
+```
+
+#scatterplot age vs. suicides rates suit by age
+**75+ group have the highest suicide rates. 5-14 years old group have lowest suicide rates.**
+```{r}
+#plot of the suicide rate of age group
+plot2<-ggplot(data=suicides.pi,mapping = aes(x = age,y = suicides.100k.pop)) +
+geom_point(aes(color=sex))
+plot2
+#histogram suicides rates vs. count suit by age
+plot3<-ggplot(data=suicides.pi)+
+geom_histogram(aes(x=suicides.100k.pop,fill=age),binwidth = 15)
+plot3
+#ploy graph suicides rates vs. count suit by age
+plot6<-ggplot(data=suicides.pi)+
+geom_freqpoly(aes(x=suicides.100k.pop,fill=age,col=age),binwidth=15)
+plot6
+#boxplot suicides rates by age
+plot9<-ggplot(data = suicides.pi, mapping = aes(x =age, y = suicides.100k.pop)) +
+geom_boxplot(aes(col=age))+
+  coord_flip()+
+  ggtitle("boxplot suicides rates by age")
+plot9
+```
+
+#histogram suicides rates vs. count suit by sex
+**More male committed suicide than female and the 75+ group have the highest suicide rates.**
+```{r}
+plot4<-ggplot(data=suicides.pi)+
+geom_histogram(aes(x=suicides.100k.pop,fill=sex),binwidth=15)
+plot4
+#ploy graph suicides rates vs. count suit by sex
+plot5<-ggplot(data=suicides.pi)+
+geom_freqpoly(aes(x=suicides.100k.pop,fill=sex,col=sex),binwidth=15)
+plot5
+#boxplot suicides rates by sex
+plot8<-ggplot(data = suicides.pi, mapping = aes(x = sex, y = suicides.100k.pop)) +
+geom_boxplot(aes(col=sex))+
+  ggtitle("suicides rate by gender")
+plot8
+```
+
+
+#scatterplot of the gdp vs. suicide rate by age
+**Higher gdp country have lower suicide rates. Lower gdp have higher suicide rates.**
+```{r}
+plot7<-ggplot(data=suicides.pi,aes(x=gdp_for_year....,y=suicides.100k.pop))+
+  geom_point(aes(col=age))+
+  ggtitle("scatterplot of the gdp vs. suicide rate by age")
+plot7
+#boxplot gdp vs suicides rates by age.
+plot14<-ggplot(data=suicides.pi,aes(x=gdp_for_year....,y=suicides.100k.pop))+
+  geom_boxplot(aes(col=age))
+plot14
+
+#scatterplot gdp vs suicides rate by sex
+#plot of the suicide rate of each year
+plot13<-ggplot(data = suicides.pi, mapping = aes(x = gdp_for_year....,y = suicides.100k.pop)) +
+geom_point(aes(color=sex))
+plot13
+```
+
+#prosperity index each year averaged
+**There is no difference and no obvious trend between suicide rate by year and suicide rate sorted by mean.rank.PI.**
+```{r}
+plot10<-ggplot(data = suicides.pi, mapping = aes(x = year, y = suicides.100k.pop)) +
+geom_point(aes(col=mean.rank.PI))+
+  ggtitle("suicides rate by year")
+plot10
+```
+
+
+#world map
+```{r}
+#Joining Suicides with the coords
+suicides_modified <- suicides %>% 
+                     left_join(coords, by = c("country" = "name"))
+library(gapminder)
+names(gapminder)
+
+ suicides_modified <- suicides_modified %>% 
+                  left_join(gapminder,by = c("country" = "country"))%>%
+                  filter(!is.na(HDI.for.year),!is.na(continent))
+ suicides_modified
+ #View(suicides_modified)
+library(maps)
+ map()
+points(coords$longitude, coords$latitude, pch=".", col="red", cex = 5)
+
+
+
+suicides_modified <- suicides %>% left_join(coords, 
+                                            by = c("country" = "name"))
+names(gapminder)
+suicides_modified <- suicides_modified %>% left_join(gapminder,
+                                by = c("country" = "country"))
+world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
+class(world)
+world
+#left_join(world,suicides,by="brk_name")
+ggplot(data =world) +
+  geom_sf() +
+  geom_point(data = suicides_modified, aes(x = suicides_modified$longitude, y =suicides_modified$ latitude,fill=suicides.100k.pop), alpha = 0.5)
+coords
+#graph the data to see if there is any difference between countries and suicide rates.
+plot11<-ggplot(data =world) +
+  geom_sf() +
+geom_point(data=suicides_modified,mapping=aes(x = suicides_modified$longitude, y =suicides_modified$ latitude,fill=year.x))
+plot11
+#suicides_modified
+```
+
+#animated suicides rate by world map
+```{r}
+#install.packages('devtools')
+#devtools::install_github('thomasp85/gganimate')
+#install.packages("gifski")
+#devtools::update_github()
+#install.packages("gganimate")
+library(gapminder)
+library(gganimate)
+#suicides_modified
+world <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf")
+class(world)
+animateworldmap<-ggplot(data =world) +
+  geom_sf()+
+  geom_point(data = suicides_modified, aes(x = suicides_modified$longitude, y =suicides_modified$ latitude,fill=suicides.100k.pop))+
+  scale_color_identity(country_colors)+
+  # Here comes the gganimate specific bits
+  labs(title = 'Year: {frame_time}',  y = 'suicide rates') +
+  transition_time(year.x) +
+  ease_aes('linear')
+animateworldmap
+#ggplot2::ggsave(animate,animation=last_animation(),path=NULL)
+
+```
+
+#animated suicides rate by year by continent
+**According to our animated graph, Europe have the highest rate because there are more countries in our dataset are in Europe. Africa have the lowest because we only have two countries in Africa which cannot represent the whole Africa continent. Asia is the second highest.**
+```{r}
+# install.packages('devtools')
+#devtools::install_github('thomasp85/gganimate')
+#install.packages("gifski")
+#devtools::update_github()
+library(gapminder)
+library(gganimate)
+#suicides_modified
+animate<-ggplot(suicides_modified, aes(gdp_for_year...., suicides.100k.pop, colour = pop)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_color_identity(country_colors)+
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  facet_wrap(~continent) +
+  # Here comes the gganimate specific bits
+  labs(title = 'Year: {frame_time}', x = 'GDP', y = 'suicide rates') +
+  transition_time(year.x) +
+  ease_aes('linear')
+animate
+```
+
+**According to this two animated graph we could see the suicide rate in each continent. However, the first graph suppose to show different color in different country. When suicide rate is higher the color gets darker. We have not figure out how to achieve that part. So, we use points to represent the countries. However, the data came from several tables and ggplot function use specific method to join them together, so the problem clearly shows on the graph that these points came from different area and did not show why they choose to let the points jump around in the first graph. The data that we have also could not represent the whole population because in the dataset we only have two countries in Africa which limited our analysis about the suicide rate on Africa continent. Also, the table finished in the middle of 2016. The animated graph only up to 2015 which also limits our analysis about the whole year.**
+
+**Exploratory analysis conclusion: 1. More male committed suicide than female. 2. 75+ age group have the highest suicide rates. 5-14 years old age group have the lowest suicide rates. 3. The year does not have a huge impact on dataset. 4. mean.rank. PI also does not affect suicide rates. 5.Higher gdp country have lower suicide rates. Lower gdp country have higher suicide rates.**
+
+
+**At an initial glance at the data, we can see a few relationships. Males show a higher max suicide rate when compared to females. Another is that there seems to be some negative correlation between G.D.P. and suicide rates. However H.D.I. doesn't seem to indicate a relationship. In addition, we can see that there appears to be a difference among the rates of suicide and their generation or respective age group.**
+
+
+```{r}
+suicides_modified <- suicides %>% left_join(coord, 
+                                            by = c("country" = "name")) 
+#allows access to countries through coordinates
+
+suicides_modified <- suicides_modified %>% left_join(gapminder,
+                                                      by = c("country" = "country"))
+#groups each country by continent
+ 
+suicides_modified_cl <- suicides_modified %>% filter(!is.na(continent))
+#clean up data by removing na values from continent
+
+suicides_modified_cl %>% 
+  group_by(continent, 
+           sex, 
+           suicides_no, 
+           country) %>%
+  summarise(total_suicides = sum(suicides_no)) %>%
+  ggplot() +
+  geom_bar(mapping = aes(x = continent, 
+                         y = total_suicides,
+                         fill = sex),
+           stat = "identity",
+           position = "dodge"
+           ) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+#displays total suicides of each continent, with extra information about gender
+
+suicides_modified_cl %>%
+  group_by(country, continent) %>%
+  summarise(
+    African_country = sum(!is.na(country))) %>%
+  filter(continent == "Africa")
+#displays which African countries are in the dataset
+```
+**We wanted a quick look at how distributed suicides were around the world, and to see if anything was weird. The Americas, Asia, and Europe having a high suicide rate was expected, but Africa having such a low total suicide was definitely intriguing. We then found out that there are only two African countries in our dataset: South Africa and Mauritius. This is definitely a problem in our dataset that may affect our results.**
+
+```{r}
+suicides_modified_cl %>%
+  group_by(continent, year.x) %>%
+  summarise(suicides_per100k = sum(suicides.100k.pop)) %>%
+  ggplot() + 
+  geom_line(aes(x = year.x, y = suicides_per100k , color = continent))
+#line graph to display suicide rates for each continent
+```
+**Europe has the highest suicide rate by far for each continent. Because of this, we wanted to look more into Europe's suicide rate by itself, to check if there were any outliers that inflates our data.**
+
+```{r}
+suicides_modified_cl %>%
+  group_by(country, 
+            continent, 
+            year.x) %>%
+  summarise(suicides_per100k = sum(suicides.100k.pop)) %>%
+  filter(continent == "Europe") %>%
+  ggplot() + 
+  geom_line(aes(x = year.x, 
+                y = suicides_per100k, 
+                color = country))
+#many line graphs, each representing a country's suicide rate
+```
+**We noticed that Hungary had the highest suicide rates of any European country, despite its large dip in recent years. We were curious as to why this was the case, and wanted to see if one of our main predictors had any relationship to the line's trend.**
+
+```{r}
+suicides_modified_cl %>%
+  group_by(year.x) %>%
+  summarise(total_gdp = sum(gdp_per_capita....)) %>%
+  ggplot() +
+  geom_line(aes(x = year.x, 
+                y = total_gdp), 
+            color = "red")
+#line graph to graph Hungary's gdp over the years
+```
+
+**Just by intuition, we felt that gdp would probably have a huge factor in determining a country's suicide rates. By graphing Hungary's gdp over the years, we noticed a large, constant increase in the country's gdp over the years. We can ignore the dip in 2016 because our dataset ends in the middle of 2016. By looking at Hungary's dip in suicide rates and the increase in gdp, we can see a relationship between the two. They are most likely inversely correlated. gdp may be an important predictor for suicide rates. In conclusion, we can assume that as suicide rates increase, gdp decreases, and vice versa.**
+ 
+##**Model 1 : Simple Linear Models**
+
+Our first model is a simple linear model using Generation, Sex, and the Average Prosperity Index Rank as predictors for suicide rate.
+
+```{r, echo=F, warning=F}
+################ LM1 full
+###  "suicides.pi" DATAFRAME joining with continents variable
+suicides.pi <- suicides.pi %>%
+  left_join(continents, by = c("country" = "country")) 
+### "suicides.pi.coord" DATAFRAME - Ready for mapping visualizations
+suicides.pi.coord <- suicides.pi %>%
+  left_join(coords, by = c("country" = "name")) %>%
+  select(country, everything())
+prosperity.grouped <- prosperity %>% group_by(country) %>% #take prosperity and group_by rank
+  summarise(mean.rank.PI = mean(rank_PI)) #Get the mean rank per country
+
+model.full.lm <- lm(suicides_no ~ generation + sex + mean.rank.PI , data = suicides.pi.coord)
+
+### CHECKING ASSUMPTIONS LM1 FULL
+# normality on LM1
+par(mfrow=c(1, 2))
+resid.full.lm <-model.full.lm$residuals
+qqnorm(resid.full.lm,  main = "Q-Q Plot of Full Linear Model 1")
+qqline(resid.full.lm)
+
+# variance on LM1
+plot(fitted(model.full.lm), resid.full.lm,  xlab = "fitted", main = "Residuals of Linear Model 1")
+abline(0,0)
+```
+Figure: Plots of assumptions for Linear Model 1: Generation, Sex, Mean Prosperity Index Rank
+
+**The Normal QQ-Plot of our first linear model shows that normality is not satisfied. The second plot of the Residuals against predicted also shows our variance assumption is not satisfied. Therefore, this model cannot be further analyzed. **
+
+```{r}
+################ LM2 GPD
+model.gdp.lm <- lm(suicides_no ~ gdp_per_capita.... , data = suicides.pi.coord)
+
+### CHECKING ASSUMPTIONS LM1 FULL
+par(mfrow=c(1, 2))
+# normality on LM1
+resid.gdp.lm <- model.gdp.lm$residuals
+qqnorm(resid.gdp.lm,  main = "Q-Q Plot of Linear Model2: GDP")
+qqline(resid.gdp.lm)
+
+# variance on LM1
+plot(fitted(model.gdp.lm), resid.gdp.lm,  xlab = "fitted", main = "Residuals of  Linear Model2: GDP")
+abline(0,0)
+```
+Figure: Plots of assumptions for Linear Model 2: GDP
+
+**The Normal QQ-Plot of our second linear model shows that normality is not satisfied. The second plot of the Residuals against predicted also shows our variance assumption is not satisfied. Therefore, this model cannot be further analyzed. **
+
+##**Model 2 : Polynomial LInear Regression**
+
+**Modeling Assumptions to Polynomial Linear Regression**
+
+Since the simple linear models failed to meet the assumptions, a polynomial model was attempted to see if the assumptions could be met. The polynomial model that was attempted was suicide rates ~ population + gdp + mean PI + age + sex.
+
+```{r, echo = FALSE}
+#Check how well a polynomial regression is for our variables chosen
+#glimpse(suicides.pi)
+d <- 10 #Set the max exponent to be 10
+MSE.Population <- rep(0, d) #create a table to keep track of the MSE for first variable
+MSE.GDP<- rep(0, d) #create a table to keep track of the MSE for the second variable
+MSE.Mean.PI <- rep(0, d)
+for(d_1 in 1:d){
+  glm.fit <- glm(data = suicides.pi, formula = suicides.100k.pop ~ poly(population, d_1)) #GLM for population at a certain degree
+  MSE.Population[d_1] <- cv.glm(suicides.pi, glm.fit, K = 10)$delta[1] #MSE for a K-cross validation at K = 10
+}
+for(d_2 in 1:d){
+  glm.fit <- glm(data = suicides.pi, formula = suicides.100k.pop ~ poly(gdp_for_year...., d_2)) #GLM for gdp_per_year at a certain degree
+  MSE.GDP[d_2] <- cv.glm(suicides.pi, glm.fit, K = 10)$delta[1] #MSE for a K-cross validation at K = 10
+}
+
+for(d_3 in 1:d){
+  glm.fit <- glm(data = suicides.pi, formula = suicides.100k.pop ~ poly(mean.rank.PI, d_3)) #GLM for gdp_per_capita at a certain degree
+  MSE.Mean.PI[d_3] <- cv.glm(suicides.pi, glm.fit, K = 10)$delta[1]
+}
+
+tibble(MSE.Population, MSE.GDP, MSE.Mean.PI) #Turn the MSE into a table for readability
+d1 <- which.min(MSE.Population) #find the lowest polynomial for Population
+d2 <- which.min(MSE.GDP) #Find the lowest polynomial for GDP
+d3 <- which.min(MSE.Mean.PI) #Find the lowest polynomial for Mean.PI
+
+Population.Degree <- d1
+GDP.Degree <- d2
+mean.PI.Degree <- d3
+
+tibble(Population.Degree, GDP.Degree, mean.PI.Degree) #Show off the polynomial degree in a readable table
+```
+
+
+First it is necessary to determine the best Degree polynomial to use for the quantitative data population, gdp, and mean PI. The table above shows the mean squared error for the polynomial function of the quantitative data up to a degree of 10. The next table indicates the best degree polynomial to use for the polynomial function. As indicated by the table, population should have a degree of 4, GDP should have a degree of 6 and mean PI should have a degree of 10.
+
+```{r}
+glm.poly = glm(data = suicides.pi, formula = suicides.100k.pop ~ poly(population, d1) + poly(gdp_for_year...., d2) +
+           sex + age + poly(mean.rank.PI, d3))
+par(mfrow = c(2,2))
+plot(glm.poly)
+```
+
+Before we can analyse the model specified earlier, the assumptions must be met. The plot above indicates that both the error normality and the error independence assumptions are both violated. Therefore, the model cannot be used to predict the suicide rates.
+
+Note: We had tried to do a BoxCox transformation on the model in order to remedy the violation, unfortunately since some of the predicted values have a negative value, it is not possible. A Yeo-Johnson transformation was also attempted but that failed as well.
+
+##**Model 3 : KNN Model**
+Since both the simple linear model and the polynomial regression model failed to meet the assumptions, a nonparametric model such as K-Nearest Neighbor will be used. The predictors used in this model will be a mixture of Year, GDP, and MeanPI. The model will try and predict whether or not there will be a high suicide rate based on the given predictors. A high suicide rate was determined by taking the mean of all the suicide rates in the data set. Population is excluded in this model because the suicide rates already include population in the model and therefore will be redundant. Population was included in the polynomial regression model because the addition of transforming the population into a polynomial may yield some important information. For the KNN model, K = 3, K = 5, and K = 7 were chosen as potential models.
+
+```{r, echo = FALSE}
+suicide_update <- suicides.pi %>%
+  mutate(High.Low = ifelse(suicides.100k.pop > 12.8161, "High", "Low"))
+
+#k = 3
+suicide_update$High.Low.knn.pred1 <- 
+  knn(train = dplyr::select(suicide_update, year, gdp_for_year....),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, gdp_for_year....),
+      k = 3)
+
+suicide_update$High.Low.knn.pred2 <-
+  knn(train = dplyr::select(suicide_update, year, mean.rank.PI,na.rm=TRUE),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, mean.rank.PI),
+      k = 3)
+
+suicide_update$High.Low.knn.pred3 <-
+  knn(train = dplyr::select(suicide_update, mean.rank.PI, gdp_for_year....),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, mean.rank.PI, gdp_for_year....),
+      k = 3)
+
+suicide_update$High.Low.knn.pred4 <-
+  knn(train = dplyr::select(suicide_update, year, gdp_for_year...., mean.rank.PI),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, gdp_for_year...., mean.rank.PI),
+      k = 3)
+
+#K = 5
+suicide_update$High.Low.knn.pred5 <- 
+  knn(train = dplyr::select(suicide_update, year, gdp_for_year....),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, gdp_for_year....),
+      k = 5)
+
+suicide_update$High.Low.knn.pred6 <-
+  knn(train = dplyr::select(suicide_update, year, mean.rank.PI),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, mean.rank.PI),
+      k = 5)
+
+suicide_update$High.Low.knn.pred7 <-
+  knn(train = dplyr::select(suicide_update, mean.rank.PI, gdp_for_year....),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, mean.rank.PI, gdp_for_year....),
+      k = 5)
+
+suicide_update$High.Low.knn.pred8 <-
+  knn(train = dplyr::select(suicide_update, year, gdp_for_year...., mean.rank.PI),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, gdp_for_year...., mean.rank.PI),
+      k = 5)
+
+#K = 7
+suicide_update$High.Low.knn.pred9 <- 
+  knn(train = dplyr::select(suicide_update, year, gdp_for_year....),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, gdp_for_year....),
+      k = 7)
+
+suicide_update$High.Low.knn.pred10 <-
+  knn(train = dplyr::select(suicide_update, year, mean.rank.PI),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, mean.rank.PI),
+      k = 7)
+
+suicide_update$High.Low.knn.pred11 <-
+  knn(train = dplyr::select(suicide_update, mean.rank.PI, gdp_for_year....),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, mean.rank.PI, gdp_for_year....),
+      k = 7)
+
+suicide_update$High.Low.knn.pred12 <-
+  knn(train = dplyr::select(suicide_update, year, gdp_for_year...., mean.rank.PI),
+      cl = suicide_update$High.Low,
+      test = dplyr::select(suicide_update, year, gdp_for_year...., mean.rank.PI),
+      k = 7)
+      
+
+class.error1 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred1)   
+class.error2 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred2)
+class.error3 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred3)
+class.error4 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred4)
+
+class.error5 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred5)   
+class.error6 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred6)
+class.error7 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred7)
+class.error8 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred8)
+
+class.error9  <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred9)   
+class.error10 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred10)
+class.error11 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred11)
+class.error12 <- mean(suicide_update$High.Low != suicide_update$High.Low.knn.pred12)
+
+
+K.values <- matrix(c("K = 3", "K = 5", "K = 7"))
+Model <- matrix(c("Year, GDP", "Year, MeanPI", "MeanPI, GDP", "Year, MeanPI, GDP"))
+
+Error.matrix <- matrix(c(class.error1, class.error2, class.error3, class.error4, class.error5, 
+                         class.error6, class.error7,class.error8, class.error9, 
+                         class.error10, class.error11, class.error12),
+             nrow = 4,
+             ncol = 3)
+
+colnames(Error.matrix) <- K.values
+rownames(Error.matrix) <- Model
+
+Error.matrix
+cm <- as.matrix(table(actual = suicide_update$High.Low, predicted = suicide_update$High.Low.knn.pred7))
+cm
+
+specificity <- cm[1,1] / (cm[1,1] + cm[1,2])
+sensitivity <- cm[2,2] / (cm[2,1] + cm[2,2])
+
+tibble(sensitivity, specificity)
+```
+
+From the table created, the best model with the lowest error rate is MeanPi and GDP at K = 5. Looking at the specificity and sensitivity rates, the model provide a decently high sensitivity but a low specificity. However, a high sensitivity is preferred as it indicates that the model is good at predicted low suicide rates meaning it can help prevent suicide rates.
+
+##**Model #4 : Logistic Regression**
+
+```{r, echo = FALSE}
+# classification 
+# use the ifelse() function to classify whether the country 
+# is above or below the mean suicide rate 
+# use the mutate() function to create a new variable for the classification
+# use the format:
+# data <- data %>%
+#         mutate(descriptive_statistics)
+suicide_update <- suicides.pi %>%
+                  mutate(rate.class = ifelse(suicides.100k.pop > 12.8161, 1,0))
+# use the glimpse() function to check
+glimpse(suicide_update)
+
+# logistic regression model
+# use the glm() function to create a logistic regression model
+# use the format:
+# model <- glm(response ~ variable, family = binomial(), data)
+names(suicide_update)
+log.rate <- glm(rate.class ~ . -country , family = binomial(),data = suicide_update)
+# use the summary() function to get the output 
+summary(log.rate)
+
+# create a logistic regression with categorical predictors
+# use the glm() function to create the logistic regression
+# use the format:
+model <- glm(rate.class ~ year + sex +age, family = binomial(), data = suicide_update)
+model
+summary(model)
+
+# misclassification rate 
+# use the predict() function to find the predictions
+class.predict <- predict(model, type = "response")
+class.predict
+
+# create a new variable to specify median rate
+# use the mutate() function
+# use the format:
+# data <- data %>% 
+#         mutate(descriptive_statistics)
+suicide_update <- suicide_update %>%
+                  mutate(above.below  = ifelse(rate.class == 1, "Yes","No"))
+names(suicide_update)
+class.predict.type <- ifelse(class.predict > 0.5, "Yes", "No") %>% as.factor()
+class.predict.type
+
+mean(suicide_update$above.below != class.predict.type)
+
+# create a logistic regression with categorical predictors
+# use the glm() function to create the logistic regression
+# use the format:
+model <- glm(rate.class ~ year + sex +age+gdp_for_year.... + sex*age, family = binomial(), data = suicide_update)
+model
+summary(model)
+```
+
+
+##**Model #5 : Linear Discriminant Analysis (LDA)**
+
+
+```{r, echo=FALSE}
+# using the mean of all the country's suicide rate to create a binary variable 
+# rate.class variable is defined as 1 for high or 0 for low suicide rate compared to mean
+suicide_update <- suicides.pi %>%
+                  mutate(rate.class = ifelse(suicides.100k.pop > 12.8161, 1, 0), na.rm = TRUE)
+
+library(MASS)
+#--------------------------  LDA    MODEL 
+# fitting LDA model where rate.class is the response and the predictors are:
+# mean prosperity rank and GDP per capita 
+lda.fit = lda(rate.class ~ mean.rank.PI + gdp_per_capita...., data = suicide_update)
+lda.fit # output LDA model
+
+```
+The LDA model output shows the probabilities already in the data to be 67.04% for suicide rate to be below the world average and 33.96% for the suicide rate to be above the world average suicide rate.
+
+Secondly, the group means for prosperity index ranking and GDP for each group, 0 for below average suicide rate and 1 for above average suicide rate.
+
+Lastly, the coefficients indicate the influence each predictor has on the suicide rate. For each predictor the greater the coefficient is the more it influences the suicide rate by country. However, in this output we see that there is a negative influence for both.
+
+```{r, warning=FALSE, echo=FALSE}
+# creating predicted values for the LDA model
+lda.fit.pred <- predict(lda.fit)
+names(lda.fit.pred)  # output names for the predicted values 
+
+# misclassification error rate of LDA model
+mean(lda.fit.pred$class != suicide_update$rate.class)
+
+```
+
+**LDA Model Evaluation**
+
+The misclassification error rate of the LDA model is 0.3146782 or 31% which is high. To validate our Linear Discriminant Analysis we proceed with our model assumptions. 
+
+
+**LDA Model Assumptions**
+
+
+The assumptions for the model are normality of the variables and homogeneity of variances. The side-by-side boxplots of GDP and Prosperity Index Rankings against the suicide rates show that there is similarity in the variance among the two predictors used in the LDA model. Then we proceed to look at the plots for the normality of each predictor variable. The QQ Plots show that the normality assumption for the GDP per capita is not satisfied since most of our points do not fall close to the QQ line. The second QQ plot shows the Prosperity Index Rank and it also appears to fail the normality assumption. Although some of our points are close to the line, the points at the tails of our data a far away to be able to validate our normality assumption. As such, the Linear Discriminant Analysis does not provide a good approximation of suicides rates based on the GDP per capita and average Prosperity Index Rank.
+
+
+
+```{r, echo=FALSE, warning=FALSE}
+# Assumptions for LDA model
+# boxplot of GDP per capita
+gdp_bp <- ggplot(data = suicides.pi)+ geom_boxplot(aes(gdp_per_capita...., suicides.100k.pop),
+                                                   color = "purple")+ ggtitle("Boxplot of GDP")
+# boxplot of the Average Prosperity Index Ranking
+mean.RPI <- ggplot(data = suicides.pi)+ geom_boxplot(aes(mean.rank.PI, suicides.100k.pop), 
+                                                     color = "blue")+ ggtitle("Boxplot of PI Rank")
+# Plotting the two boxplots side-by-side to compare the variances of the two predictors
+grid.arrange(gdp_bp, mean.RPI, nrow = 1)
+```
+
+Figure: Boxplot of GDP and Boxplot of Prosperity Index (PI) Rank.
+
+
+```{r, echo=FALSE}
+# Assumption of Normality for predictors used for LDA model
+par(mfrow=c(1, 2))
+# normality plot of GDP per capita variable
+qqnorm(suicides.pi$gdp_per_capita....,  main = "Q-Q Plot of GDP per capita")
+qqline(suicides.pi$gdp_per_capita....)
+
+# normality plot of Prosperity Index Rank variable
+qqnorm(suicides.pi$mean.rank.PI,  main = "Q-Q Plot of Prosperity Index Rank")
+qqline(suicides.pi$mean.rank.PI)
+```
+
+```{r, collapse = T, echo = FALSE, warning = F}
+chooseCRANmirror(graphics = FALSE, ind = 1)
+knitr::opts_chunk$set(echo = TRUE)
+# install the necessary packages 
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("gridExtra")
+install.packages("readxl")
+install.packages("gapminder")
+install.packages("car")
+
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(readxl)
+library(gapminder)
+library(car)
+
+# loading data from suicide file
+suicides <- read.csv("master.csv",header=TRUE)
+glimpse(suicides)  # outputting a glimpse of the data
+
+# loading data from prosperity index file
+prosperity <- read_excel("PI.xlsx")
+glimpse(prosperity)  # outputting a glimpse of the data
+
+# loading data from country_coords file
+coords<-read_excel("country_coord.xlsx",sheet=1)
+coords
+glimpse(coords)
+
+prosperity.grouped <- prosperity %>% group_by(country) %>% #take prosperity and group_by rank
+  summarise(mean.rank.PI = mean(rank_PI)) #Get the mean rank per country
+suicides <- suicides %>%
+  mutate(country = as.character(country))
+
+
+# checking for mismatches in both tables 
+glimpse(suicides)
+
+suicides.anti <- suicides %>%
+  anti_join(prosperity.grouped, by = c("country" = "country")) %>%
+  count(country, sort = TRUE)
+# filter prosperity by the year
+suicides.pi <- suicides %>%
+  left_join(prosperity.grouped, by = c("country" = "country")) %>%
+  arrange(mean.rank.PI)
+
+# use the glimpse() function to check the data 
+glimpse(suicides.pi)
+```
+
+After creating a polynomial regression model and multiple linear regression model, we decided to try to fit a logistic regression model to determine whether a country's suicide rate was above the global median suicide rate or below the global median suicide rate. 
+
+To calculate the global median suicide rate, we calculated the median suicide rate based on the overall median of the `suicides.1ook.pop` column from the data. 
+
+To fit the logistic regression model, we created a binary response variable called `rate.class`. The variable `rate.class` took the values of either 0 or 1, indicating whether the suicide rate for a particular row was either below the global median suicide rate (rate.class = 0) or above the global median suicide rate (rate.class = 1).
+After creating the response variable `rate.class`, we decided to fit a logistic regression model based on the predictor variables `year`, `sex` and `age`.
+
+```{r, collapse = T,echo = FALSE, warning = F}
+# LOGISTIC REGRESSION 1
+
+# binary response variable for classification
+# use the ifelse() function to classify whether the country 
+# is above or below the mean suicide rate 
+# use the mutate() function to create a new variable for the classification
+# use the format:
+# data <- data %>%
+#         mutate(descriptive_statistics)
+suicide_update <- suicides.pi %>%
+                  mutate(rate.class = ifelse(suicides.100k.pop > 12.8161, 1,0))
+
+# create a logistic regresssion model
+# use the glm() function to create the logistic regression model
+# use the format:
+# model <- glm(response ~ variable, family = binomial(), data)
+model1 <- glm(rate.class ~ year + sex + age, family = binomial(), data = suicide_update)
+model1
+```
+
+ Before performing any further analysis, we have to determine if the logistic regression assumptions are satisfied. 
+ 
+ To check the assumptions for the logistic regression, we checked for the following:
+ - the outcome is binary or dichotomous variable (yes/no or 0/1)
+ - there is a linear relationship between the logit of the outcome and each predictor variable 
+ - there is no influential values (extreme values or outliers) in the continuous predictors 
+ - there is no high intercorelations (multicollinearity) between among the predictors 
+
+Since `rate.class` is a variable that takes the value 0 or 1, our first assumption is satisfied. 
+We proceed to check that there is a linear relationship between the logit of the outcome and each predictor variable. We did this by creating a set of scatterplots for the logit outcomes against each of the predictor variables.
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# ASSUMPTIONS 1 
+# the outcome is binary or dichotomous variable, like yes/no or 0/1
+# there is a linear relationship between the logit of the outcome 
+# and each predictor variable 
+# there is no influential values (extreme values or outliers) in 
+# the continuous predictors 
+# there is no high intercorelations (ie multicollinearity) between
+# among the predictors 
+
+# install the necessary package 
+install.packages("broom", repos = "http://cran.us.r-project.org")
+library(broom)
+theme_set(theme_classic())
+
+# load the conditional probabilities 
+# use the predict() function
+# use the format:
+# probability <- predict(model, type = "response")
+prob_1 <- predict(model1, type = "response")
+
+# remove qualitative variables from the original data frame and 
+# bind the logit values to the data 
+# select only numeric predictors 
+data_scatter <- suicide_update %>% 
+                dplyr::select_if(is.numeric)
+# use the names() function to get the variables as a check
+names(data_scatter)
+# create a vector to store the quantitative variables 
+predictors <- colnames(data_scatter)
+# print the quantitative variables as a check
+predictors 
+# bind the logit and tidy the data to plot
+# use the mutate() function to nid the logit and 
+# tidy the data to plot
+# use the format:
+# data <- data %>%
+#         mutate(descriptive statistics) %>%
+#         gather(tidying_variables)
+data_scatter <- data_scatter %>%
+  mutate(logit = log(prob_1 /(1-prob_1))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit)
+
+# create the scatterplot of the logit of the outcome 
+# and each predictor variable 
+# use the ggplot() function to create the scatterplot
+# use the format:
+# ggplot(data = <DATA>) +
+# <GEOM_FUNCTION>(mapping = aes(mappings))
+ggplot(data = data_scatter, mapping = aes(x = logit, y = predictor.value)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "loess") +
+  theme_bw() +
+  facet_wrap(~predictors, scales = "free_y")
+```
+
+Upon looking at the scatterplots, we see that many of the plots did not suggest a linear relationship between the logit outcomes and the predictor variables. Despite this observation, we can proceed because the predictor variables (`year`, `age` and `sex`) have multiple levels within the data set. Because of the nature of the data, we can assume that the linearity of the logit outcomes against the predictor variables can be accomodated in this case. Due to the nature of the data, many rows were removed because of `NA` values and makes this particular assumption hard to validate. We decided to assume that linearity between the logit outcomes and the predictor variables was satisifed and proceeded with the other assumptions. 
+
+Next, we looked at the Cook's distance plot to determine if there were any influential values in the continuous predictors.
+
+```{r, collapse = T, echo = FALSE, warning = F}
+
+# use the plot() function to plot the extreme outliers 
+# use the format:
+# plot(model, which = num_of_outliers, id.n = num_to_specify)
+plot(model1, which = 4, id.n = 3)
+```
+
+Based on the Cooke's distance plot, we saw that there were two observations that were potential outliers. 
+To determine if these potential outliers were actually influential, we looked at the standardized residuals errors. 
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# alternatively, extract model results 
+model.data <- augment(model1) %>%
+              mutate(index = 1:n())
+ 
+# plot the standardized residuals 
+ggplot(data = model.data, mapping = aes(x = index, y = .std.resid)) +
+     geom_point(aes(color = rate.class), alpha = 0.5) +
+     theme_bw()
+```
+
+Based on the standardized residual errors plot, the potential outliers appeared to be influential because they were above 3 standardized residuals. Despite this observation, we concluded that there were no potential outliers because the data set is extremely large. With only two potential outliers, we determined this is insignificant and did not violate the extreme values assumption for logistic regression.
+
+Finally, we looked at the variance inflation factor (VIF) values to determine if there was multicollinearity among the predictors.
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# multicollinearity
+# compute the variance inflation factors 
+# use the vif() function 
+car::vif(model1)
+```
+
+As a rule of thumb, if there are many variables with a VIF value greater than 5 or 10, we can conclude there is multicollinearity among the predictor variables.  
+Looking at the output, there were no variance inflation factor (VIF) values that were greater than 5 or 10. Since no VIF values were greater than 5 or 10, we concluded that the multicollinearity assumption was satisfied. 
+
+Because all the assumptions were satisfied, we proceeded to interpret the logistic regression model.
+
+```{r, collapse = T, echo = FALSE, warning = F}
+summary(model1)
+```
+
+Looking at the output, we noticed that the variables `year`, `age` and `sex` were all significant in determining whether a country's sucide rate was below the global median suicide rate (rate.class = 0) or above the global median suicide rate (rate.class = 1). 
+
+At alpha = 0.05 level of significance, p-values for `year`, `age` and `sex` were all less than alpha. We can reject the null hypothesis and conclude that there is sufficient evidence that `year`, `age` and `sex` are significant in determining whether a country's suicide rate was below the global median suicide rate (rate.class = 0) or above the global median suicide rate (rate.class = 1).
+Because we fitted a logistic regression model, we must interpret the estimates of the predictor variables using odds ratio. 
+
+Based on the output above, the predictors with negative estimates are `year` and `age5-14 years` with values of -0.011883 and -6.801625. This suggests that for every unit increase in `year`, the odds that `rate.class` = 1 increases by e^-0.011883. Similarly, for every unit increase in `age5-14 years`, the odds that `rate.class` = 1 increases by e^-6.801625. That is, `year` and `age5-14 years` decrease the odds of `rate.class` = 1 (a country's suicide rate is above the global median suicide rate).
+
+The predictor variables with positive estimates are `sexmale`, `age25-34 years`, `age35-54 years`, `age55-74 years` and `age75+ years` with values of 2.491662, 0.580155, 0.911736, 1.240817 and 1.547861. Since the estimate values for `sexmale`,`age55-74 years` and `age75+ years` are the greatest positive estimates, for every unit increase in `sexmale`,`age55-74 years` and `age75+ years`, the odds that `rate.class` = 1 increases by e^2.491662, e^1.240817 and e^1.547861. That is, `sexmales`, `age55-74 years` and `age75+ years` increases the odds of `rate.class` = 1(a country's suicide rate is above the global median suicide rate) the most. 
+
+Next, we want to determine how accurate our logistic regression model is. To do this, we calculated the misclassification error rate for the logistic regression model. 
+
+```{r, collapse = T, echo = FALSE, warning= F}
+# MISCLASSIFICATION ERROR RATE 
+# conditional probabilities 
+# use the predict() function to find the probabilities 
+class.predict <- predict(model1, type = "response")
+
+# create a new variable to specify whether the suicide rate 
+# is above or below the median suicide rate 
+# use the mutate() function
+# use the format:
+# data <- data %>% 
+#         mutate(descriptive_statistics)
+suicide_update <- suicide_update %>%
+                  mutate(above.below  = ifelse(rate.class == 1, "Yes","No"))
+
+
+# Baye's classifier 
+# use the ifelse() function to create the classification
+probability.type <- ifelse(class.predict > 0.5, "Yes", "No") %>% 
+                          as.factor()
+
+
+# misclassification error rate 
+# use the mean() function to get the misclassification error rate 
+mean(suicide_update$above.below != probability.type)
+```
+
+Based on the output, we determined that the misclassification rate is 0.2029116. Since our model falsely determines the `rate.class` value around 20.3% of the time, we fitted another logistic regression model with GDP and an interaction effect to see if the second logistic regression model would produce better results. 
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# LOGISTIC REGRESSION 2
+# create a logistic regression with interaction effect 
+# use the glm() function to create the logistic regression
+# use the format:
+# model <- glm(response ~ variable, family = binomial(), data)
+model2 <- glm(rate.class ~ year + sex +age+gdp_for_year.... + sex*age, family = binomial(), data = suicide_update)
+model2
+```
+
+Because we used another logistic regression model, we proceed to check the assumptions for logistic regression once more. 
+
+To check the assumptions for the logistic regression, we checked for the following:
+ - the outcome is binary or dichotomous variable (yes/no or 0/1)
+ - there is a linear relationship between the logit of the outcome and each predictor variable 
+ - there is no influential values (extreme values or outliers) in the continuous predictors 
+ - there is no high intercorelations (multicollinearity) between among the predictors 
+
+Since `rate.class` is a variable that still takes the value 0 or 1, our first assumption is  still satisfied. 
+We proceed to check that there is a linear relationship between the logit of the outcomes and each predictor variable. We did this by creating another set of scatterplots for the logit outcomes against each of the predictor variables.
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# ASSUMPTIONS 2
+# the outcome is binary or dichotomous variable, like yes/no or 0/1
+# there is a linear relationship between the logit of the outcome 
+# and each predictor variable 
+# there is no influential values (extreme values or outliers) in 
+# the continuous predictors 
+# there is no high intercorelations (ie multicollinearity) between
+# among the predictors 
+
+# load the conditional probabilities 
+# use the predict() function
+# use the format:
+# probability <- predict(model, type = "response")
+prob_2 <- predict(model2, type = "response")
+
+# remove qualitative variables from the original data frame and 
+# bind the logit values to the data 
+# select only numeric predictors 
+data_scatter <- suicide_update %>% 
+                dplyr::select_if(is.numeric)
+# use the names() function to get the variables as a check
+names(data_scatter)
+# create a vector to store the quantitative variables 
+predictors <- colnames(data_scatter)
+# print the quantitative variables as a check
+predictors 
+# bind the logit and tidy the data to plot
+# use the mutate() function to nid the logit and 
+# tidy the data to plot
+# use the format:
+# data <- data %>%
+#         mutate(descriptive statistics) %>%
+#         gather(tidying_variables)
+data_scatter <- data_scatter %>%
+  mutate(logit = log(prob_2 /(1-prob_2))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit)
+
+# create the scatterplot of the logit of the outcome 
+# and each predictor variable 
+# use the ggplot() function to create the scatterplot
+# use the format:
+# ggplot(data = <DATA>) +
+# <GEOM_FUNCTION>(mapping = aes(mappings))
+ggplot(data = data_scatter, mapping = aes(x = logit, y = predictor.value)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "loess") +
+  theme_bw() +
+  facet_wrap(~predictors, scales = "free_y")
+
+```
+
+Since the data is quite large, we proceed to accomodate for the scatterplots as before and assume that the linearity between the logit outcomes and the predictor variables was satisifed and proceeded with the other assumptions.
+
+To proceed, we looked at the Cook's distance plot to determine if there were any influential values in the continuous predictors.
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# use the plot() function to plot the extreme outliers 
+# use the format:
+# plot(model, which = num_of_outliers, id.n = num_to_specify)
+plot(model2, which = 4, id.n = 3)
+```
+
+Based on the Cooke's distance plot, we saw that there were two observations that were potential outliers. 
+To determine if these potential outliers were actually influential, we looked at the standardized residuals errors. 
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# alternatively, extract model results 
+model.data2 <- augment(model2) %>%
+              mutate(index = 1:n())
+
+# plot the standardized residuals 
+ggplot(data = model.data2, mapping = aes(x = index, y = .std.resid)) +
+     geom_point(aes(color = rate.class), alpha = 0.5) +
+     theme_bw()
+```
+
+Based on the standardized residual errors plot, the potential outliers appeared to be influential because they were above 3 standardized residuals. Despite this observation, we concluded that there were no potential outliers because the data set is extremely large. With only two potential outliers, we determined this is insignificant and did not violate the extreme values assumption for logistic regression like the previous standardized residuals errors plot. 
+
+Finally, we looked at the variance inflation factor (VIF) values to determine if there was multicollinearity among the predictors.
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# multicollinearity
+# compute the variance inflation factors 
+# use the vif() function 
+car::vif(model2)
+```
+Like the VIFS values from the first logistic regression model, there were no variance inflation factor (VIF) values that were greater than 5 or 10. Since no VIF values were greater than 5 or 10, we concluded that the multicollinearity assumption was satisfied. 
+
+Because all the assumptions were satisfied, we proceeded to interpret the logistic regression model. 
+
+```{r, collapse = T, echo = FALSE, warning = F}
+summary(model2)
+```
+
+Looking at the output, we noticed that not all the variables were significant in determining whether a country's sucide rate was below the global median suicide rate (rate.class = 0) or above the global median suicide rate (rate.class = 1). 
+
+At alpha = 0.05 level of significance, p-values for `year`, `sexmale`, `age5-14 years`, `age35-54 years`, `age55-74 years`, `age75+ years`, `gdp_for_year....`, `sexmale: age25-34 years`, `sexmale: age5-14 years`, `sexmale:age55-74 years` and `sexmale:age75+ years` were all less than alpha. We can reject the null hypothesis and conclude that there is sufficient evidence that `year`, `sexmale`, `age5-14 years`, `age35-54 years`, `age55-74 years`, `age75+ years`, `gdp_for_year....`, `sexmale: age25-34 years`, `sexmale: age5-14 years`, `sexmale:age55-74 years` and `sexmale:age75+ years` are significant in determining whether a country's suicide rate was below the global median suicide rate (rate.class = 0) or above the global median suicide rate (rate.class = 1).
+
+Because we fitted another logistic regression model, we must interpret the estimates of the predictor variables using the  odds ratio again. Because `year`,`age` and `sex` were found to be significant predictors in the first logistic regression model, we are particularly interested in whether GDP and the age:sex interactions are significantly positive in increasing the odds that `rate.class` = 1 (a country's suicide rate above the global median suicide rate).
+
+The predictor variables with positive estimates are `sexmale`, `age35-54 years`, `age55-74 years`, `age75+ years`, `gdp_for_year....` and `sexmale: age25-34 years` with values of  2.881e+00, 9.899e-01, 1.797e+00,  2.203e+00, 1.445e-13 and 9.393e-01 . That is, `sexmale`, `age35-54 years`, `age55-74 years`, `age75+ years`, `gdp_for_year....` and `sexmale: age25-34 years` increases the odds of `rate.class` = 1(a country's suicide rate is above the global median suicide rate) the most. 
+
+Next, we want to determine how accurate our second logistic regression model is. To do this, we calculated the misclassification error rate again for the second logistic regression model. 
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# MISCLASSIFICATION ERROR RATE 2 
+# get the conditional probabilities 
+# use the predict() function to get the conditional probabilities 
+# use the format:
+# probabilities <- predict(model, type = "response")
+probability2 <- predict(model2, type = "response")
+
+# Baye's classifier 
+# use the ifelse() function to create the classification
+probability.type2 <- ifelse(class.predict > 0.5, "Yes", "No") %>% 
+                          as.factor()
+
+
+# misclassification error rate 
+# use the mean() function to get the misclassification error rate 
+mean(suicide_update$above.below != probability.type2)
+```
+
+Suprisingly, the misclassification rate for the second logistic regression model is 0.2029116 as well.This suggests that the second logistic regression model with GDP and interaction effects is not anymore useful in predicting whether a country's suicide rate is above or below the global median suicide rate. 
+
+As a caution, we created some plots to determine if the data supports the logistic regression outputs. To do this, we used `ggplot` to plot the results of `rate.class` as a categorical variable (this time, with a newly created variable called `above.below` that has values of "Yes" if `rate.class` = 1 and "No" if `rate.class` = 0).    
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# PLOTS 
+# use the ggplot() function to plot the rate.class versus the signficant factors 
+# use the format:
+# ggplot(data = <DATA>) +
+# <GEOM_FUNCTION> (mapping = aes(mappings))
+ggplot(data = suicide_update, mapping = aes(x = sex, y = age)) +
+  geom_point(aes(color = above.below))
+ggplot(data = suicide_update, mapping = aes(x = year, y = gdp_for_year....)) +
+  geom_point(aes(color = above.below))
+```
+Looking at the output, we determined that the logistic regression outputs correspond to the data. In particular, the interaction male:35-54 years indicates that the `rate.class` = 1 (`above.below` = "Yes") and increases a country's odds of having a suicide rate above the global median suicide rate. 
+
+To finish our logistic regression analysis, we wish to determine how accurate our misclassification error rates are from the previous steps. To do this, we subsetted the data into training and testing data using the `cv.glm` function to perform the weighted cross validations for both logistic regression models.  
+
+```{r, collapse = T, echo = FALSE, warning = F}
+# CROSS VALIDATION 
+library(boot)
+library(MASS)
+# use set.seed() to make the resutls reproducible
+set.seed(167)
+# use the cv.glm() function to create the cross-validation results 
+# use the format:
+# mse.cv <- cv.glm(model, data, K)
+MSE.cv1 <- cv.glm(suicide_update,model1,K=10)$delta[1]
+MSE.cv2 <- cv.glm(suicide_update,model2,K=10)$delta[1]
+# print the misclassification error rates (MSE) 
+MSE.cv1
+MSE.cv2
+```
+
+Based on the output above, it appears that the misclassification error rate for the first logistic regression model is  0.1403661 and the misclassification error rate for the second logistic regression model is 0.1378249. 
+Despite the misclassification error rates calculated above, it appears that the second logistic regression model with GDP and interaction effects is more useful in determining whether a country's suicide rate is above or below the global median suicide rate. 
+## **Conclusion**
+
+- There is no trend over time in suicide rates within countries. The correlation between suicide rates over each year was -0.05919378.
+
+- Male suicide rates are higher than female males. A reason for this is the male use of more lethal methods in comparison to females.
+
+- Country suicide rates were lower as GDP higher. This is intuitively what is expected. That is, for countries with a higher GDP, the lower their suicide rate. The same pattern was observed for the country Prosperity Index Rank in relation to the suicide rate.
+
+- The model with the minimum misclassification error rate was logistic regression model with interaction. 
+
+## **Acknowledgments**
+
+Background: Brian Tran & Dalia Avila
+
+Data cleaning/joining: Alan Phan & Dalia Avila
+
+Exploratory Analysis: Eric Wu, & Jiayin Sun
+
+Visualizations: Eric Wu, Jiayin Sun, Dalia Avila, Brian Tran
+
+Polynomial Regression: Alan Phan
+
+Logistic Regression: Brian Tran
+
+Linear Discriminant Analysis: Dalia Avila
+
+Conclusions: Alan Phan, Brian Tran, Dalia Avila, Eric Wu, Jiayin Sun
+
+
+## **References**
+
+1. Rusty. "Suicide Rates Overview 1985 to 2016." Kaggle, 1 Dec. 2018, www.kaggle.com/russellyates88/suicide-rates-overview-1985-to-2016.
+
+2. "Downloads." Legatum Prosperity Index 2018, Legatum Institute, 19 Dec. 2018, www.prosperity.com/about/resources.
+
+3. "Countries.csv  |  Dataset Publishing Language  |  Google Developers." Google, Google, 20 Jan. 2012, www.developers.google.com/public-data/docs/canonical/countries_csv.
+
+4. Schumacher, Helene. "Future - Why More Men than Women Die by Suicide." BBC, BBC, 18 Mar. 2019, www.bbc.com/future/story/20190313-why-more-men-kill-themselves-than-women.
+
+5. Jennifer Bryan (2017). gapminder: Data from Gapminder. R package version 0.3.0.
+  https://CRAN.R-project.org/package=gapminder
+
+6. R Core Team (2019). R: A language and environment for statistical computing. R Foundation
+  for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/
+
+7. Wickham and Grolemund. "R for Data Science: Import, Tidy, Transform, Visualize, and Model Data". First Edition (2017), http://r4ds.had.co.nz/
